@@ -1,3 +1,4 @@
+package ssstream;
 
 public class mySSPStreamServer {
 

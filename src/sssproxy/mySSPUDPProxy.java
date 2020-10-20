@@ -1,3 +1,4 @@
+package sssproxy;
 
 public class mySSPUDPProxy {
 
