@@ -1,0 +1,6 @@
+- Streaming
+- Lab2 - 2.1->Secure Hashing, 3.1-> MACs (Message Authentication Codes), HMACs (ou Hash-Based MACs) e CMACs (ou Cryptographic MACs)
+
+- Ver bem o crypto stuff, tem como usar key
+
+- Fazer handshake proxy com server
