@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class mySSPUDPProxy {
+	
 	private static final String CONFIG = "D:\\FCT\\SRSC\\PRATICA\\lab1\\Streaming\\hjUDPproxy\\config.properties";
 
 	public static void main(String[] args) throws Exception {
@@ -48,26 +49,21 @@ public class mySSPUDPProxy {
 		Set<SocketAddress> outSocketAddressSet = Arrays.stream(destinations.split(",")).map(s -> parseSocketAddress(s))
 				.collect(Collectors.toSet());
 
-		DatagramSocket inSocket = new DatagramSocket(inSocketAddress);
-		DatagramSocket outSocket = new DatagramSocket();
+		DatagramSocket inSocket = new DatagramSocket(inSocketAddress);// mudar pelo SSPSocket
+		DatagramSocket outSocket = new DatagramSocket();// mudar pelo SSPSocket
 		byte[] buffer = new byte[4 * 1024];
 
 		while (true) {
 			DatagramPacket inPacket = new DatagramPacket(buffer, buffer.length);
+			// mudar pelo SSPSocket
 			inSocket.receive(inPacket); // if remote is unicast
 
 			System.out.print("*");
 			for (SocketAddress outSocketAddress : outSocketAddressSet) {
-				outSocket.send(new DatagramPacket(buffer, inPacket.getLength(), outSocketAddress));
+				outSocket.send(new DatagramPacket(buffer, inPacket.getLength(), outSocketAddress)); // mudar pelo
+																									// SSPSocket
 			}
 		}
-	}
-
-	/**
-	 * Handles the ssp config file
-	 */
-	private void handlesSSPConfigFile() {
-
 	}
 
 	private static InetSocketAddress parseSocketAddress(String socketAddress) {

@@ -19,7 +19,8 @@ public class mySSPStreamServer {
 		DataInputStream g = new DataInputStream(new FileInputStream(args[0]));
 		byte[] buff = new byte[4096];
 
-		DatagramSocket s = new DatagramSocket();
+		DatagramSocket s = new DatagramSocket(); // mudar pelo SSPSocket
+
 		InetSocketAddress addr = new InetSocketAddress(args[1], Integer.parseInt(args[2]));
 		DatagramPacket p = new DatagramPacket(buff, buff.length, addr);
 		long t0 = System.nanoTime(); // tempo de referencia para este processo
@@ -37,18 +38,11 @@ public class mySSPStreamServer {
 			long t = System.nanoTime();
 			Thread.sleep(Math.max(0, ((time - q0) - (t - t0)) / 1000000));
 
-			s.send(p);
+			s.send(p);// mudar pelo SSPSocket
 			System.out.print(".");
 		}
 
 		System.out.println("DONE! all frames sent: " + count);
-	}
-
-	/**
-	 * Handles the ssp config file
-	 */
-	private void handlesSSPConfigFile() {
-
 	}
 
 }
