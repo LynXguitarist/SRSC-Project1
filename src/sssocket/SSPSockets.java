@@ -81,6 +81,9 @@ public class SSPSockets extends DatagramSocket {
 	private byte[] sspPayload(DatagramPacket packet) {
 		byte[] payload = null;
 		// Generate payload E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C)
+		// Ks: symmetric session key
+		// Km1: MAC key
+		// Km2: a MAC key for Fast control DoS mitigation
 		try {
 			cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
 
@@ -90,10 +93,7 @@ public class SSPSockets extends DatagramSocket {
 			byte[] M = packet.getData();
 
 			// C = E (KS, [ Mp || MACKM (Mp) ]
-			// Ks: symmetric session key
-			// Km1: MAC key
-			// Km2: a MAC key for Fast control DoS mitigation
-
+			
 			payload = cipher.doFinal(packet.getData());
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException | IllegalBlockSizeException
 				| BadPaddingException e) {
