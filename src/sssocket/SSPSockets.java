@@ -46,7 +46,7 @@ public class SSPSockets extends DatagramSocket {
 		// SPP_PAYLOAD
 		byte[] sspPayload = sspPayload(packet);
 
-		String message = sspHeader(versionInfo, contentType, payloadType, sspPayload.length) + "||" + sspPayload;
+		String message = sspHeader(versionInfo, contentType, payloadType, sspPayload.length) + sspPayload;
 		byte[] sppMessage = message.getBytes();
 
 		DatagramPacket outpacket = new DatagramPacket(sppMessage, sppMessage.length);
@@ -75,32 +75,38 @@ public class SSPSockets extends DatagramSocket {
 	// ---------------------------------------PRIVATE_METHODS-------------------------------------------//
 
 	private String sspHeader(short versionInfo, byte contentType, byte payloadType, int payloadSize) {
-		return versionInfo + "||" + contentType + "||" + payloadType + "||" + payloadSize;
+		return versionInfo + "" + contentType + "" + payloadType + "" + payloadSize;
 	}
 
 	private byte[] sspPayload(DatagramPacket packet) {
 		// Ks: symmetric session key
 		// Km1: MAC key
 		// Km2: a MAC key for Fast control DoS mitigation
-
+		// NOTA || -> append
 		byte[] payload = null;
-		// Generate payload E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C)
+		// Generate payload :
+		// E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C)
 
 		// MAC2km2 (C) -> cifra com MAC2 o C (MAC2.init(ENCRIPT_MODE))
 		// MAC1km1 (Mp) -> cifra com MAC o Mp (MAC.init(ENCRIPT_MODE))
-		// [Mp || MAC1km1 (Mp) ] -> penso que TRANSFORMATION, duvida nisto
+		// cipher.doFinal -> E ( Ks, [Mp || MAC1km1 (Mp) ] ) -> Mp com MAC1km1(Mp)
+		// E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C) :
+		// junta ao payload cipher.doFinal em cima com o MAC2km2 (C)
 
 		try {
 			cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
-
-			// Mp = [id || nonce || M] -> penso que TRANSFORMATION, duvida nisto
-			int id = 0;// ???????
+			// M = packet.getData()
+			// Mp = [id || nonce || M] -> talvez guardar no objecto Message_Mp(uso este obj
+			// porque torna mais facil o acesso ao binario)
+			int id = 1;// ???????
 			SecureRandom nonce = new SecureRandom();
 			byte[] M = packet.getData();
 
-			// C = E (KS, [ Mp || MACKM (Mp) ] ) -> Mesmo pensamento do que em ciam
-
-			payload = cipher.doFinal(packet.getData());
+			// C = E (KS, [ Mp || MACKM (Mp) ] ) :
+			// MACKM (Mp) -> cifra com MAC o Mp (MAC.init(ENCRIPT_MODE))
+			// cipher.doFinal -> E (KS, [ Mp || MACKM (Mp) ] ) -> Mp com MACkm(Mp)
+			
+			payload = cipher.doFinal();
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException | IllegalBlockSizeException
 				| BadPaddingException e) {
 			e.printStackTrace();
