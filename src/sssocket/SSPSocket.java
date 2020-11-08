@@ -2,12 +2,16 @@ package sssocket;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 
 import javax.crypto.BadPaddingException;
@@ -17,7 +21,9 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-public class SSPSockets extends DatagramSocket {
+import utils.*;
+
+public class SSPSocket extends DatagramSocket {
 
 	private String ciphersuite, mac1, mac2, algorithm;
 	private byte[] iv, session_key, mac1_key, mac2_key;
@@ -28,29 +34,49 @@ public class SSPSockets extends DatagramSocket {
 	private Cipher cipher;
 	private Mac hMac, hMac2;
 
-	// Receives as input the file with the crypto to use
-	public SSPSockets(String filename) throws Exception {
+	public SSPSocket() throws SocketException {
+		super();
+	}
+
+	public SSPSocket(String filename) throws Exception {
+		super();
+		init(filename);
+	}
+
+	public SSPSocket(SocketAddress inSocketAddress, String filename) throws Exception {
 		super();
 		init(filename);
 	}
 
 	/**
 	 * Sends and encrypts packets
+	 * 
+	 * @throws IOException
 	 */
 	public void send(DatagramPacket packet) {
-		// SSP_HEADER
-		short versionInfo = 0x0101;
-		byte contentType = 0x01;
-		byte payloadType = 0x01;
 
-		// SPP_PAYLOAD
-		byte[] sspPayload = sspPayload(packet);
+		try {
+			cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
 
-		String message = sspHeader(versionInfo, contentType, payloadType, sspPayload.length) + sspPayload;
-		byte[] sppMessage = message.getBytes();
+			// SPP_PAYLOAD
+			byte[] sspPayload = sspPayload(packet);
 
-		DatagramPacket outpacket = new DatagramPacket(sppMessage, sppMessage.length);
-		this.send(outpacket);
+			// SSP_HEADER
+			short versionInfo = 0x0101;
+			byte contentType = 0x01;
+			byte payloadType = 0x01;
+			SSPHeader sspHeader = sspHeader(versionInfo, contentType, payloadType, sspPayload.length);
+			byte[] sspHeader_bytes = Utils.convertToBytes(sspHeader);
+
+			// SSPMessage
+			SSPMessage sspMessage = new SSPMessage(sspHeader_bytes, sspPayload);
+			byte[] sspMessage_bytes = Utils.convertToBytes(sspMessage);
+
+			DatagramPacket outpacket = new DatagramPacket(sspMessage_bytes, sspMessage_bytes.length);
+			this.send(outpacket);
+		} catch (InvalidKeyException | InvalidAlgorithmParameterException | IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -59,60 +85,88 @@ public class SSPSockets extends DatagramSocket {
 	public void receive(DatagramPacket packet) {
 		try {
 			cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
-			byte[] inputBytes = cipher.doFinal(packet.getData());
 
 			// receives sspMessage -> sspHeader + sspPayload
 			// Deals only with payload
+			byte[] message = packet.getData();
+			SSPMessage sspMessage = (SSPMessage) Utils.convertFromBytes(message);
 
-			DatagramPacket inpacket = new DatagramPacket(inputBytes, inputBytes.length);
+			byte[] payload_bytes = sspMessage.getSspPayload();
+			SSPPayload sspPayload = (SSPPayload) Utils.convertFromBytes(payload_bytes);
+			byte[] C = sspPayload.getCipheredMessage();
+
+			byte[] Mp_bytes = cipher.doFinal(C);
+			Message_Mp mp = (Message_Mp) Utils.convertFromBytes(Mp_bytes);
+
+			byte[] hMac_bytes = hMac.doFinal(Mp_bytes);
+			byte[] payload_plaintext = mp.getPayloadPlainText();
+
+			hMac.init(hMacKey);
+			hMac.update(payload_plaintext, 0, payload_plaintext.length);
+
+			if (!MessageDigest.isEqual(hMac.doFinal(), hMac_bytes)) {
+				// message-integrity corrupted
+				return; // ou throw
+			}
+
+			DatagramPacket inpacket = new DatagramPacket(payload_plaintext, payload_plaintext.length);
 			this.receive(inpacket);
 		} catch (IllegalBlockSizeException | InvalidAlgorithmParameterException | BadPaddingException
-				| InvalidKeyException e) {
+				| InvalidKeyException | ClassNotFoundException | IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	// ---------------------------------------PRIVATE_METHODS-------------------------------------------//
-
-	private String sspHeader(short versionInfo, byte contentType, byte payloadType, int payloadSize) {
-		return versionInfo + "" + contentType + "" + payloadType + "" + payloadSize;
+	public void sendClearText(DatagramPacket packet) {
+		this.send(packet);
 	}
 
+	// ---------------------------------------PRIVATE_METHODS-------------------------------------------//
+
+	private SSPHeader sspHeader(short versionInfo, byte contentType, byte payloadType, int payloadSize) {
+		SSPHeader sspHeader = new SSPHeader(versionInfo, contentType, payloadType, payloadSize);
+		return sspHeader;
+	}
+
+	/**
+	 * Ks: symmetric session key || Km1: MAC key || Km2: a MAC key for Fast control
+	 * Generate payload : E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C)
+	 * 
+	 * @param packet
+	 * @return
+	 */
 	private byte[] sspPayload(DatagramPacket packet) {
-		// Ks: symmetric session key
-		// Km1: MAC key
-		// Km2: a MAC key for Fast control DoS mitigation
-		// NOTA || -> append
+
 		byte[] payload = null;
-		// Generate payload :
-		// E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C)
 
 		// MAC2km2 (C) -> cifra com MAC2 o C (MAC2.init(ENCRIPT_MODE))
 		// MAC1km1 (Mp) -> cifra com MAC o Mp (MAC.init(ENCRIPT_MODE))
 		// cipher.doFinal -> E ( Ks, [Mp || MAC1km1 (Mp) ] ) -> Mp com MAC1km1(Mp)
 		// E (Ks, [Mp || MAC1km1 (Mp) ]) || MAC2km2 (C) :
-		// junta ao payload cipher.doFinal em cima com o MAC2km2 (C)
 
 		try {
-			cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
-			// M = packet.getData()
-			// Mp = [id || nonce || M] -> talvez guardar no objecto Message_Mp(uso este obj
-			// porque torna mais facil o acesso ao binario)
 			int id = 1;// ???????
 			SecureRandom nonce = new SecureRandom();
 			byte[] M = packet.getData();
-
-			// C = E (KS, [ Mp || MACKM (Mp) ] ) :
-			// MACKM (Mp) -> cifra com MAC o Mp (MAC.init(ENCRIPT_MODE))
-			// cipher.doFinal -> E (KS, [ Mp || MACKM (Mp) ] ) -> Mp com MACkm(Mp)
 			
-			payload = cipher.doFinal();
-		} catch (InvalidKeyException | InvalidAlgorithmParameterException | IllegalBlockSizeException
-				| BadPaddingException e) {
+			// FAZER PRIVATE METHODS
+			// PORQUE MAC PODE VIR NULL
+			
+			// Mp = [id || nonce || M]
+			Message_Mp Mp = new Message_Mp(id, nonce, M);
+			byte[] Mp_bytes = Utils.convertToBytes(Mp);
+
+			// [ Mp || MACKM (Mp) ]
+			byte[] hMac_bytes = hMac.doFinal(Mp_bytes);
+
+			// C = E (KS, [ Mp || MACKM (Mp) ] )
+			byte[] C = cipher.doFinal(hMac_bytes, 0, hMac.getMacLength()); // C
+
+			payload = hMac2.doFinal(C);
+		} catch (IllegalBlockSizeException | BadPaddingException | IllegalStateException | IOException e) {
 			e.printStackTrace();
 		}
 		return payload;
-
 	}
 
 	/**
@@ -123,14 +177,12 @@ public class SSPSockets extends DatagramSocket {
 	private void init(String filename) throws Exception {
 		processFile(filename);
 
-		// IV, KEY, SESSION_KEY,CIPHER_SUITE
+		// IV, KEY, SESSION_KEY, CIPHER_SUITE
 		if (this.iv != null)
 			ivSpec = new IvParameterSpec(this.iv);
 
 		secretKey = new SecretKeySpec(this.session_key, this.algorithm);
 		cipher = Cipher.getInstance(this.ciphersuite);
-
-		// NAO SEI SE E PRECISO??!?!?
 
 		// MAC1
 		if (this.mac1 != null) {
@@ -138,6 +190,7 @@ public class SSPSockets extends DatagramSocket {
 			// hMacKey = new SecretKeySpec(secretKey.getEncoded(), this.mac1);
 			hMacKey = new SecretKeySpec(this.mac1_key, this.mac1);
 			hMac.init(hMacKey);
+
 		}
 		// MAC2
 		if (this.mac2 != null) {

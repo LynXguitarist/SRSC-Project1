@@ -3,6 +3,8 @@ package ssstream;
 import java.io.*;
 import java.net.*;
 
+import sssocket.SSPSocket;
+
 public class mySSPStreamServer {
 
 	static public void main(String[] args) throws Exception {
@@ -19,7 +21,7 @@ public class mySSPStreamServer {
 		DataInputStream g = new DataInputStream(new FileInputStream(args[0]));
 		byte[] buff = new byte[4096];
 
-		DatagramSocket s = new DatagramSocket(); // mudar pelo SSPSocket
+		SSPSocket s = new SSPSocket(args[3]); // mudar pelo SSPSocket
 
 		InetSocketAddress addr = new InetSocketAddress(args[1], Integer.parseInt(args[2]));
 		DatagramPacket p = new DatagramPacket(buff, buff.length, addr);

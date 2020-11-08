@@ -1,5 +1,5 @@
 - Fazer payload, ver teorica T2(todas) ver pratica secure hashing e mac.
-
+- fazer unicast e multicast
 
 PHASE 2:
 - Fazer handshake proxy com server

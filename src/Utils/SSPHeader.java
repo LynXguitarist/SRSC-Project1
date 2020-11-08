@@ -1,6 +1,13 @@
-package Utils;
+package utils;
 
-public class SSPHeader {
+import java.io.Serializable;
+
+public class SSPHeader implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 
 	private short versionInfo;
 	private byte contentType, payloadType;

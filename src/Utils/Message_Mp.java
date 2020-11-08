@@ -1,8 +1,14 @@
-package Utils;
+package utils;
 
+import java.io.Serializable;
 import java.security.SecureRandom;
 
-public class Message_Mp {
+public class Message_Mp implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 
 	private int id;
 	private SecureRandom nonce;
