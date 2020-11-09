@@ -2,10 +2,14 @@ package ssstream;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.Paths;
 
 import sssocket.SSPSocket;
 
 public class mySSPStreamServer {
+
+	private static final String MOVIES = "movies/";
+	private static final String CONFIG = "configs-examples/Phase-1/";
 
 	static public void main(String[] args) throws Exception {
 		if (args.length != 4) {
@@ -18,10 +22,14 @@ public class mySSPStreamServer {
 		int size;
 		int count = 0;
 		long time;
-		DataInputStream g = new DataInputStream(new FileInputStream(args[0]));
+		
+		String movie_file = Paths.get(MOVIES + args[0]).toAbsolutePath().toString();
+		DataInputStream g = new DataInputStream(new FileInputStream(movie_file));
+		
 		byte[] buff = new byte[4096];
 
-		SSPSocket s = new SSPSocket(args[3]); // mudar pelo SSPSocket
+		String config_file = Paths.get(CONFIG + args[3]).toAbsolutePath().toString();
+		SSPSocket s = new SSPSocket(config_file); // mudar pelo SSPSocket
 
 		InetSocketAddress addr = new InetSocketAddress(args[1], Integer.parseInt(args[2]));
 		DatagramPacket p = new DatagramPacket(buff, buff.length, addr);

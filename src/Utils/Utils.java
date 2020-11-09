@@ -1,6 +1,5 @@
 package utils;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -23,4 +22,5 @@ public class Utils {
 			return in.readObject();
 		}
 	}
+
 }
