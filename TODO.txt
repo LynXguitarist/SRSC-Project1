@@ -1,5 +1,2 @@
-- Fazer payload, ver teorica T2(todas) ver pratica secure hashing e mac.
-- fazer unicast e multicast
-
-PHASE 2:
-- Fazer handshake proxy com server
+- FAZER VERIFICAÇAO DE QUE NAO VEM BYTES VAZIOS OU COM ZEROS DO PROXY(AO ENTRAR NO RECEIVEPACKET DO SSPPROXY)
+- 

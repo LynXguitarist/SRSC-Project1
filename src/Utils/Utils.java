@@ -23,4 +23,15 @@ public class Utils {
 		}
 	}
 
+	public static byte[] convertHexToByte(String[] str) {
+		byte[] bytes = new byte[str.length];
+		int i = 0;
+		for (String s : str) {
+			String tmp = s.trim().substring(s.length() - 2);
+			byte a = (byte) Integer.parseInt(tmp, 16);
+			bytes[i++] = a;
+		}
+		return bytes;
+	}
+
 }

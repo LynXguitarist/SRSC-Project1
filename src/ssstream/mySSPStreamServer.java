@@ -48,7 +48,7 @@ public class mySSPStreamServer {
 			long t = System.nanoTime();
 			Thread.sleep(Math.max(0, ((time - q0) - (t - t0)) / 1000000));
 
-			s.send(p);// mudar pelo SSPSocket
+			s.sendPacket(p);// mudar pelo SSPSocket
 			System.out.print(".");
 		}
 

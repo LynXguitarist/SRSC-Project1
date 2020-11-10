@@ -7,14 +7,12 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -32,7 +30,7 @@ public class SSPSocket extends DatagramSocket {
 	private int session_key_size, mac1_key_size, mac2_key_size;
 
 	private IvParameterSpec ivSpec;
-	private Key secretKey, hMacKey, hMacKey2;
+	private Key secretKey, hMacKey, hMac2Key;
 	private Cipher cipher;
 	private Mac hMac, hMac2;
 
@@ -55,7 +53,7 @@ public class SSPSocket extends DatagramSocket {
 	 * 
 	 * @throws IOException
 	 */
-	public void send(DatagramPacket packet) {
+	public void sendPacket(DatagramPacket packet) {
 
 		try {
 			cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
@@ -74,7 +72,7 @@ public class SSPSocket extends DatagramSocket {
 			SSPMessage sspMessage = new SSPMessage(sspHeader_bytes, sspPayload);
 			byte[] sspMessage_bytes = Utils.convertToBytes(sspMessage);
 
-			DatagramPacket outpacket = new DatagramPacket(sspMessage_bytes, sspMessage_bytes.length);
+			DatagramPacket outpacket = new DatagramPacket(sspMessage_bytes, sspMessage_bytes.length, packet.getSocketAddress());
 			this.send(outpacket);
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException | IOException e) {
 			e.printStackTrace();
@@ -84,13 +82,19 @@ public class SSPSocket extends DatagramSocket {
 	/**
 	 * Receives and decipher the packet
 	 */
-	public void receive(DatagramPacket packet) {
+	public void receivePacket(DatagramPacket packet) {
 		try {
 			cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
 
 			// receives sspMessage -> sspHeader + sspPayload
 			// Deals only with payload
 			byte[] message = packet.getData();
+			//RESOLVER ISTO, AQUI VERIFICA SE VEM VAZIO
+			if(message == null) {
+				System.out.println("Not receiving data...");
+				return;
+			}
+			
 			SSPMessage sspMessage = (SSPMessage) Utils.convertFromBytes(message);
 
 			byte[] payload_bytes = sspMessage.getSspPayload();
@@ -119,7 +123,7 @@ public class SSPSocket extends DatagramSocket {
 		}
 	}
 
-	public void sendClearText(DatagramPacket packet) {
+	public void sendClearText(DatagramPacket packet) throws IOException {
 		this.send(packet);
 	}
 
@@ -198,8 +202,8 @@ public class SSPSocket extends DatagramSocket {
 		if (this.mac2 != null) {
 			hMac2 = Mac.getInstance(this.mac2);
 			// hMacKey2 = new SecretKeySpec(secretKey.getEncoded(), this.mac2);
-			hMacKey = new SecretKeySpec(this.mac2_key, this.mac1);
-			hMac2.init(hMacKey2);
+			hMac2Key = new SecretKeySpec(this.mac2_key, this.mac2);
+			hMac2.init(hMac2Key);
 		}
 
 	}
@@ -217,16 +221,14 @@ public class SSPSocket extends DatagramSocket {
 		this.mac2 = in.readLine().split(":")[1]; // mac2_ciphersuite
 		// iv
 		String iv_content = in.readLine().split(":")[1];
-		
-		//TA MALLLLLL
-		
+
 		if (!iv_content.toUpperCase().equals("NULL"))
-			this.iv = iv_content.getBytes();
+			this.iv = Utils.convertHexToByte(iv_content.split(","));
 
 		String session_content = in.readLine().split(":")[1];
 		if (!session_content.toUpperCase().equals("NULL")) {
 			this.session_key_size = Integer.parseInt(session_content); // sessionKeySize
-			// loops the content unitl length of array = sessionKeySize
+			// loops the content until length of array = sessionKeySize
 			this.session_key = new byte[this.session_key_size];
 			int session_key_length = 0;
 			while (session_key_length != this.session_key_size) {
@@ -234,11 +236,10 @@ public class SSPSocket extends DatagramSocket {
 				if (content.contains(":")) // if is the first line, splits the bytes from the text
 					content = content.split(":")[1];
 
-				byte[] contents_in_bytes = content.getBytes();
-				System.out.println(contents_in_bytes.length);
+				byte[] contents_in_bytes = Utils.convertHexToByte(content.split(","));
 				// copies the byte content into the array
 				System.arraycopy(contents_in_bytes, 0, this.session_key, session_key_length, contents_in_bytes.length);
-				session_key_length = contents_in_bytes.length;
+				session_key_length += contents_in_bytes.length;
 			}
 		} else {
 			in.readLine();
@@ -248,7 +249,7 @@ public class SSPSocket extends DatagramSocket {
 		if (!mac1_key_content.toUpperCase().equals("NULL")) {
 			this.mac1_key_size = Integer.parseInt(mac1_key_content);
 			// mac1Key
-			this.mac1_key = in.readLine().split(":")[1].getBytes(); // ta mal
+			this.mac1_key = Utils.convertHexToByte(in.readLine().split(":")[1].split(","));
 		} else {
 			in.readLine();
 		}
@@ -257,7 +258,7 @@ public class SSPSocket extends DatagramSocket {
 		if (!mac2_key_content.toUpperCase().equals("NULL")) {
 			this.mac2_key_size = Integer.parseInt(mac2_key_content);
 			// mac2Key
-			this.mac2_key = in.readLine().split(":")[1].getBytes();// ta mal
+			this.mac2_key = Utils.convertHexToByte(in.readLine().split(":")[1].split(","));
 		}
 
 		// get algorithm

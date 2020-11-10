@@ -22,6 +22,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.Set;
@@ -31,16 +32,17 @@ import sssocket.SSPSocket;
 
 public class mySSPUDPProxy {
 	
-	private static final String CONFIG = "D:\\FCT\\SRSC\\PRATICA\\lab1\\Streaming\\hjUDPproxy\\config.properties";
+	private static final String PROP = "src/sssproxy/";
+	private static final String CONFIG = "configs-examples/Phase-1/";
 
 	public static void main(String[] args) throws Exception {
-		InputStream inputStream = new FileInputStream(CONFIG);
+		InputStream inputStream = new FileInputStream(Paths.get(PROP + "config.properties").toAbsolutePath().toString());
 		if (inputStream == null) {
 			System.err.println("Configuration file not found!");
 			System.exit(1);
 		}
 
-		// args[0] -> is a configuration file (text file) for the SSP protocol
+		// args[0] -> is a configuration file
 
 		Properties properties = new Properties();
 		properties.load(inputStream);
@@ -51,14 +53,14 @@ public class mySSPUDPProxy {
 		Set<SocketAddress> outSocketAddressSet = Arrays.stream(destinations.split(",")).map(s -> parseSocketAddress(s))
 				.collect(Collectors.toSet());
 
-		SSPSocket inSocket = new SSPSocket(inSocketAddress, args[0]);
+		SSPSocket inSocket = new SSPSocket(inSocketAddress, Paths.get(CONFIG + args[0]).toAbsolutePath().toString());
 		SSPSocket outSocket = new SSPSocket();
 		byte[] buffer = new byte[4 * 1024];
 
 		while (true) {
 			DatagramPacket inPacket = new DatagramPacket(buffer, buffer.length);
 			
-			inSocket.receive(inPacket); // if remote is unicast
+			inSocket.receivePacket(inPacket); // if remote is unicast
 
 			System.out.print("*");
 			for (SocketAddress outSocketAddress : outSocketAddressSet) {
