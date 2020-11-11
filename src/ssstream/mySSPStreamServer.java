@@ -27,12 +27,14 @@ public class mySSPStreamServer {
 		DataInputStream g = new DataInputStream(new FileInputStream(movie_file));
 		
 		byte[] buff = new byte[4096];
+		
+		InetSocketAddress addr = new InetSocketAddress(args[1], Integer.parseInt(args[2]));
 
 		String config_file = Paths.get(CONFIG + args[3]).toAbsolutePath().toString();
 		SSPSocket s = new SSPSocket(config_file); // mudar pelo SSPSocket
 
-		InetSocketAddress addr = new InetSocketAddress(args[1], Integer.parseInt(args[2]));
-		DatagramPacket p = new DatagramPacket(buff, buff.length, addr);
+		
+		DatagramPacket p = new DatagramPacket(buff, buff.length);
 		long t0 = System.nanoTime(); // tempo de referencia para este processo
 		long q0 = 0;
 
@@ -48,7 +50,7 @@ public class mySSPStreamServer {
 			long t = System.nanoTime();
 			Thread.sleep(Math.max(0, ((time - q0) - (t - t0)) / 1000000));
 
-			s.sendPacket(p);// mudar pelo SSPSocket
+			s.sendPacket(p);
 			System.out.print(".");
 		}
 

@@ -44,7 +44,7 @@ public class SSPSocket extends DatagramSocket {
 	}
 
 	public SSPSocket(SocketAddress inSocketAddress, String filename) throws Exception {
-		super();
+		super(inSocketAddress);
 		init(filename);
 	}
 
@@ -72,7 +72,8 @@ public class SSPSocket extends DatagramSocket {
 			SSPMessage sspMessage = new SSPMessage(sspHeader_bytes, sspPayload);
 			byte[] sspMessage_bytes = Utils.convertToBytes(sspMessage);
 
-			DatagramPacket outpacket = new DatagramPacket(sspMessage_bytes, sspMessage_bytes.length, packet.getSocketAddress());
+			DatagramPacket outpacket = new DatagramPacket(sspMessage_bytes, sspMessage_bytes.length,
+					packet.getSocketAddress());
 			this.send(outpacket);
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException | IOException e) {
 			e.printStackTrace();
@@ -82,19 +83,19 @@ public class SSPSocket extends DatagramSocket {
 	/**
 	 * Receives and decipher the packet
 	 */
-	public void receivePacket(DatagramPacket packet) {
+	public byte[] receivePacket(DatagramPacket packet) {
+		byte[] outputBytes= null;
 		try {
+			this.receive(packet);
+
 			cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+
+			System.out.println(packet.getSocketAddress());
 
 			// receives sspMessage -> sspHeader + sspPayload
 			// Deals only with payload
 			byte[] message = packet.getData();
-			//RESOLVER ISTO, AQUI VERIFICA SE VEM VAZIO
-			if(message == null) {
-				System.out.println("Not receiving data...");
-				return;
-			}
-			
+
 			SSPMessage sspMessage = (SSPMessage) Utils.convertFromBytes(message);
 
 			byte[] payload_bytes = sspMessage.getSspPayload();
@@ -112,15 +113,14 @@ public class SSPSocket extends DatagramSocket {
 
 			if (!MessageDigest.isEqual(hMac.doFinal(), hMac_bytes)) {
 				// message-integrity corrupted
-				return; // ou throw
+				return outputBytes; // ou throw
 			}
-
-			DatagramPacket inpacket = new DatagramPacket(payload_plaintext, payload_plaintext.length);
-			this.receive(inpacket);
+			outputBytes = payload_plaintext;
 		} catch (IllegalBlockSizeException | InvalidAlgorithmParameterException | BadPaddingException
 				| InvalidKeyException | ClassNotFoundException | IOException e) {
 			e.printStackTrace();
 		}
+		return outputBytes;
 	}
 
 	public void sendClearText(DatagramPacket packet) throws IOException {

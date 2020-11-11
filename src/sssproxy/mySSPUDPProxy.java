@@ -55,16 +55,16 @@ public class mySSPUDPProxy {
 
 		SSPSocket inSocket = new SSPSocket(inSocketAddress, Paths.get(CONFIG + args[0]).toAbsolutePath().toString());
 		SSPSocket outSocket = new SSPSocket();
+		
 		byte[] buffer = new byte[4 * 1024];
-
 		while (true) {
 			DatagramPacket inPacket = new DatagramPacket(buffer, buffer.length);
 			
-			inSocket.receivePacket(inPacket); // if remote is unicast
+			byte[] bytesToSend = inSocket.receivePacket(inPacket); // if remote is unicast
 
 			System.out.print("*");
 			for (SocketAddress outSocketAddress : outSocketAddressSet) {
-				outSocket.sendClearText(new DatagramPacket(buffer, inPacket.getLength(), outSocketAddress)); 
+				outSocket.sendClearText(new DatagramPacket(bytesToSend, bytesToSend.length, outSocketAddress)); 
 			}
 		}
 	}
