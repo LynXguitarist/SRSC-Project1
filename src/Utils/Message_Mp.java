@@ -1,4 +1,4 @@
-package Utils;
+package utils;
 
 import java.io.Serializable;
 import java.security.SecureRandom;
