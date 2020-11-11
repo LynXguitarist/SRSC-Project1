@@ -21,7 +21,8 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import utils.*;
+import Utils.*;
+
 
 public class SSPSocket extends DatagramSocket {
 
