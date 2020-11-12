@@ -107,6 +107,7 @@ public class SSPSocket extends DatagramSocket {
 			Message_Mp mp = (Message_Mp) Utils.convertFromBytes(Mp_bytes);
 
 			byte[] hMac_bytes = hMac.doFinal(Mp_bytes);
+			
 			byte[] payload_plaintext = mp.getPayloadPlainText();
 
 			hMac.init(hMacKey);
@@ -168,8 +169,11 @@ public class SSPSocket extends DatagramSocket {
 
 			// C = E (KS, [ Mp || MACKM (Mp) ] )
 			byte[] C = cipher.doFinal(hMac_bytes, 0, hMac.getMacLength()); // C
-
-			payload = hMac2.doFinal(C);
+			
+			byte[] payload_mac = hMac2.doFinal(C);
+			
+			SSPPayload sspPayload = new SSPPayload(C, payload_mac);
+			payload = Utils.convertToBytes(sspPayload);
 		} catch (IllegalBlockSizeException | BadPaddingException | IllegalStateException | IOException e) {
 			e.printStackTrace();
 		}
