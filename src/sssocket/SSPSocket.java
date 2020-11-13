@@ -21,8 +21,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import utils .*;
-
+import utils.*;
 
 public class SSPSocket extends DatagramSocket {
 
@@ -85,13 +84,11 @@ public class SSPSocket extends DatagramSocket {
 	 * Receives and decipher the packet
 	 */
 	public byte[] receivePacket(DatagramPacket packet) {
-		byte[] outputBytes= null;
+		byte[] outputBytes = null;
 		try {
 			this.receive(packet);
 
 			cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
-
-			System.out.println(packet.getSocketAddress());
 
 			// receives sspMessage -> sspHeader + sspPayload
 			// Deals only with payload
@@ -99,15 +96,23 @@ public class SSPSocket extends DatagramSocket {
 
 			SSPMessage sspMessage = (SSPMessage) Utils.convertFromBytes(message);
 
+			// Gets payload from message
 			byte[] payload_bytes = sspMessage.getSspPayload();
 			SSPPayload sspPayload = (SSPPayload) Utils.convertFromBytes(payload_bytes);
-			byte[] C = sspPayload.getCipheredMessage();
 
-			byte[] Mp_bytes = cipher.doFinal(C);
+			// AQUI VER DO OUTRO MAC -> hMac2, tal como embaixo
+			// Gets C from payload
+			byte[] cipheredMessage = sspPayload.getCipheredMessage();
+			byte[] C_bytes = cipher.doFinal(cipheredMessage);
+			Message_C C = (Message_C) Utils.convertFromBytes(C_bytes);
+
+			// Gets MP from C
+			byte[] Mp_bytes = C.getMessage_MP();
 			Message_Mp mp = (Message_Mp) Utils.convertFromBytes(Mp_bytes);
 
 			byte[] hMac_bytes = hMac.doFinal(Mp_bytes);
-			
+
+			// Gets M from Mp
 			byte[] payload_plaintext = mp.getPayloadPlainText();
 
 			hMac.init(hMacKey);
@@ -168,11 +173,13 @@ public class SSPSocket extends DatagramSocket {
 			byte[] hMac_bytes = hMac.doFinal(Mp_bytes);
 
 			// C = E (KS, [ Mp || MACKM (Mp) ] )
-			byte[] C = cipher.doFinal(hMac_bytes, 0, hMac.getMacLength()); // C
-			
-			byte[] payload_mac = hMac2.doFinal(C);
-			
-			SSPPayload sspPayload = new SSPPayload(C, payload_mac);
+			Message_C C = new Message_C(Mp_bytes, hMac_bytes);
+			byte[] C_bytes = cipher.doFinal(Utils.convertToBytes(C), 0, hMac.getMacLength());
+
+			// Payload -> E (KS, [ Mp || MACKM (Mp) ] ) || MacKM2(C)
+			byte[] payload_mac = hMac2.doFinal(C_bytes);
+			SSPPayload sspPayload = new SSPPayload(C_bytes, payload_mac);
+
 			payload = Utils.convertToBytes(sspPayload);
 		} catch (IllegalBlockSizeException | BadPaddingException | IllegalStateException | IOException e) {
 			e.printStackTrace();

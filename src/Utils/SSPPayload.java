@@ -10,11 +10,11 @@ public class SSPPayload implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private byte[] cipheredMessage;
-	private byte[] mac;
+	private byte[] macedMessage;
 
-	public SSPPayload(byte[] cipheredMessage, byte[] mac) {
+	public SSPPayload(byte[] cipheredMessage, byte[] macedMessage) {
 		this.cipheredMessage = cipheredMessage;
-		this.mac = mac;
+		this.macedMessage = macedMessage;
 	}
 
 	public byte[] getCipheredMessage() {
@@ -25,12 +25,12 @@ public class SSPPayload implements Serializable {
 		this.cipheredMessage = cipheredMessage;
 	}
 
-	public byte[] getMac() {
-		return mac;
+	public byte[] getMacMessage() {
+		return macedMessage;
 	}
 
-	public void setMac(byte[] mac) {
-		this.mac = mac;
+	public void setMacedMessage(byte[] macedMessage) {
+		this.macedMessage = macedMessage;
 	}
 
 }
